@@ -21,9 +21,9 @@
 #define EEPROM_IS_IMMEDIATE_FEED_SILO_202_STATE_ADDRESS 0
 #define EEPROM_IS_IMMEDIATE_FEED_SILO_204_STATE_ADDRESS 1
 #define EEPROM_S206_SELECTION_STATE_ADDRESS             2
-#define EEPROM_S207_SELECTION_STATE_ADDRESS             3
-#define EEPROM_S208_SELECTION_STATE_ADDRESS             4
-#define EEPROM_SILO202_THRESHOLD_STATE_ADDRESS          5
+#define EEPROM_S207_SELECTION_STATE_ADDRESS             4
+#define EEPROM_S208_SELECTION_STATE_ADDRESS             6
+#define EEPROM_SILO202_THRESHOLD_STATE_ADDRESS          8
 #define EEPROM_SILO204_THRESHOLD_STATE_ADDRESS          10
 
 #define PRIMARY_KEY                             F("command")
@@ -48,14 +48,14 @@
 #define SILO_208            208
 
 int16_t weight;
-uint16_t silo202Threshold = 0;
-uint16_t silo204Threshold = 0;
+uint16_t silo202Threshold;
+uint16_t silo204Threshold;
 bool weightError = false;
 bool isImmediateFeedSilo202 = true;
 bool isImmediateFeedSilo204 = true;
-uint8_t s206SelectionState = NO_SELECTION;
-uint8_t s207SelectionState = NO_SELECTION;
-uint8_t s208SelectionState = NO_SELECTION;
+uint8_t s206SelectionState;
+uint8_t s207SelectionState;
+uint8_t s208SelectionState;
 
 SoftwareSerial modbusSerial(SERIAL_RX_PIN, SERIAL_TX_PIN);
 ModbusMaster node;
@@ -101,12 +101,12 @@ void saveStateToEEPROM() {
     EEPROM.write(EEPROM_IS_IMMEDIATE_FEED_SILO_202_STATE_ADDRESS, isImmediateFeedSilo202);
     EEPROM.write(EEPROM_IS_IMMEDIATE_FEED_SILO_204_STATE_ADDRESS, isImmediateFeedSilo204);
 
-    EEPROM.write(EEPROM_S206_SELECTION_STATE_ADDRESS, static_cast<byte>(s206SelectionState));
-    EEPROM.write(EEPROM_S207_SELECTION_STATE_ADDRESS, static_cast<byte>(s207SelectionState));
-    EEPROM.write(EEPROM_S208_SELECTION_STATE_ADDRESS, static_cast<byte>(s208SelectionState));
+    EEPROM.write(EEPROM_S206_SELECTION_STATE_ADDRESS, s206SelectionState);
+    EEPROM.write(EEPROM_S207_SELECTION_STATE_ADDRESS, s207SelectionState);
+    EEPROM.write(EEPROM_S208_SELECTION_STATE_ADDRESS, s208SelectionState);
 
-    EEPROM.put(EEPROM_SILO202_THRESHOLD_STATE_ADDRESS, silo202Threshold);
-    EEPROM.put(EEPROM_SILO204_THRESHOLD_STATE_ADDRESS, silo204Threshold);
+    EEPROM.write(EEPROM_SILO202_THRESHOLD_STATE_ADDRESS, silo202Threshold);
+    EEPROM.write(EEPROM_SILO204_THRESHOLD_STATE_ADDRESS, silo204Threshold);
 }
 
 void loadStateFromEEPROM() {
@@ -149,12 +149,10 @@ void readWeight() {
 void processSerialInput() {
     if (Serial.available() == 0) return;
 
-    const char* input = Serial.readStringUntil('\n').c_str();
-    DeserializationError error = deserializeJson(jsonDoc, input);
+    DeserializationError error = deserializeJson(jsonDoc, Serial.readStringUntil('\n'));
 
     if (error) {
-        Serial.println(error.f_str());
-        sendErrorToGUI(F("JSON parsing failed"));
+        sendErrorToGUI(error.f_str());
         return;
     }
 
@@ -330,7 +328,7 @@ void sendStateToGUI() {
 
 void sendErrorToGUI(const __FlashStringHelper* errorMessage) {
     jsonDoc.clear();
-    jsonDoc["error"] = reinterpret_cast<const char*>(errorMessage);
+    jsonDoc[F("error")] = errorMessage;
     String output;
     serializeJson(jsonDoc, output);
     Serial.println(output);

@@ -1,0 +1,5 @@
+[wokwi]
+version = 1
+firmware = '/build/arduino.avr.uno/silo-master-arduino.ino.hex'
+elf = '/build/arduino.avr.uno/silo-master-arduino.ino.elf'
+rfc2217ServerPort = 4000

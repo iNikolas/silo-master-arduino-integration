@@ -28,3 +28,84 @@ Once SiloMaster Arduino Integration is running on your Arduino board, it will:
 - Read weight data from external Silos via Modbus communication.
 - Store and retrieve Silo states and threshold settings from EEPROM for persistence.
 - Respond to commands from the control system to toggle feed modes, set Silo thresholds, and manage primary Silo selections.
+
+### Supported Commands
+
+#### 1. `toggleFeedMode`
+   - **Description:** This command toggles the feed mode for a specified external silo. It allows you to switch between delayed and immediate feed modes for precise control over material flow.
+   - **Usage:** 
+     ```json
+     {
+       "command": "toggleFeedMode",
+       "externalSilo": <siloNumber>
+     }
+     ```
+   - **Parameters:**
+     - `externalSilo`: The number of the external silo for which to toggle the feed mode (`202` or `204`).
+   - **Example:**
+     ```json
+     {
+       "command": "toggleFeedMode",
+       "externalSilo": 202
+     }
+     ```
+
+#### 2. `setSiloThreshold`
+   - **Description:** This command sets the threshold for a specified silo. It allows you to define the minimum weight at which the system should trigger a feed action.
+   - **Usage:** 
+     ```json
+     {
+       "command": "setSiloThreshold",
+       "silo": <siloNumber>,
+       "threshold": <thresholdValue>
+     }
+     ```
+   - **Parameters:**
+     - `silo`: The number of the silo for which to set the threshold (`202` or `204`).
+     - `threshold`: The threshold value in the weight unit used by the system.
+   - **Example:**
+     ```json
+     {
+       "command": "setSiloThreshold",
+       "silo": 204,
+       "threshold": 500
+     }
+     ```
+
+#### 3. `setPrimarySiloState`
+   - **Description:** This command sets the primary silo selection state. It allows you to configure the primary silo selection for feeding operations.
+   - **Usage:** 
+     ```json
+     {
+       "command": "setPrimarySiloState",
+       "selectionS202": <selectionState202>,
+       "selectionS204": <selectionState204>
+     }
+     ```
+   - **Parameters:**
+     - `selectionS202`: The selection state for silo 202 (`0` for no selection, `1` for selection).
+     - `selectionS204`: The selection state for silo 204 (`0` for no selection, `1` for selection).
+   - **Example:**
+     ```json
+     {
+       "command": "setPrimarySiloState",
+       "selectionS202": 1,
+       "selectionS204": 0
+     }
+     ```
+
+#### 4. `getState`
+   - **Description:** This command retrieves the current state of the system. It provides information about weight readings, feed modes, threshold settings, and silo selection states.
+   - **Usage:** 
+     ```json
+     {
+       "command": "getState"
+     }
+     ```
+   - **Example:**
+     ```json
+     {
+       "command": "getState"
+     }
+     ```
+
