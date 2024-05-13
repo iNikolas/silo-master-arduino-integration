@@ -314,15 +314,15 @@ void processSetSiloThreshold() {
 
 void sendStateToGUI() {
     jsonDoc.clear();
-    jsonDoc["weight"] = weight;
-    jsonDoc["weightError"] = weightError;
-    jsonDoc["isImmediateFeedSilo202"] = isImmediateFeedSilo202;
-    jsonDoc["isImmediateFeedSilo204"] = isImmediateFeedSilo204;
-    jsonDoc["silo202Threshold"] = silo202Threshold;
-    jsonDoc["silo204Threshold"] = silo204Threshold;
-    jsonDoc["s206SelectionState"] = s206SelectionState;
-    jsonDoc["s207SelectionState"] = s207SelectionState;
-    jsonDoc["s208SelectionState"] = s208SelectionState;
+    jsonDoc[F("weight")] = weight;
+    jsonDoc[F("weightError")] = weightError;
+    jsonDoc[F("isImmediateFeedSilo202")] = isImmediateFeedSilo202;
+    jsonDoc[F("isImmediateFeedSilo204")] = isImmediateFeedSilo204;
+    jsonDoc[F("silo202Threshold")] = silo202Threshold;
+    jsonDoc[F("silo204Threshold")] = silo204Threshold;
+    jsonDoc[F("s206SelectionState")] = s206SelectionState;
+    jsonDoc[F("s207SelectionState")] = s207SelectionState;
+    jsonDoc[F("s208SelectionState")] = s208SelectionState;
     String output;
     serializeJson(jsonDoc, output);
     Serial.println(output);
