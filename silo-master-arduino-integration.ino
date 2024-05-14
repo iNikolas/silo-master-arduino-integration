@@ -14,7 +14,7 @@
 #define BAUD_RATE           38400
 #define REGISTER_START      0x40001
 #define REGISTER_COUNT      3
-#define READ_DELAY_MS       500
+#define READ_DELAY_MS       10
 #define DECIMAL_PLACE       10.0f
 #define JSON_BUFFER_SIZE    50
 
@@ -59,9 +59,9 @@
 int16_t weight;
 uint16_t silo202Threshold;
 uint16_t silo204Threshold;
-bool weightError = false;
-bool isImmediateFeedSilo202 = true;
-bool isImmediateFeedSilo204 = true;
+bool weightError;
+bool isImmediateFeedSilo202;
+bool isImmediateFeedSilo204;
 uint8_t s206SelectionState;
 uint8_t s207SelectionState;
 uint8_t s208SelectionState;
