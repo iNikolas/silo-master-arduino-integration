@@ -16,26 +16,35 @@
 #define REGISTER_COUNT      3
 #define READ_DELAY_MS       500
 #define DECIMAL_PLACE       10.0f
-#define JSON_BUFFER_SIZE    300
+#define JSON_BUFFER_SIZE    50
 
-#define EEPROM_IS_IMMEDIATE_FEED_SILO_202_STATE_ADDRESS 0
-#define EEPROM_IS_IMMEDIATE_FEED_SILO_204_STATE_ADDRESS 1
-#define EEPROM_S206_SELECTION_STATE_ADDRESS             2
-#define EEPROM_S207_SELECTION_STATE_ADDRESS             4
-#define EEPROM_S208_SELECTION_STATE_ADDRESS             6
-#define EEPROM_SILO202_THRESHOLD_STATE_ADDRESS          8
-#define EEPROM_SILO204_THRESHOLD_STATE_ADDRESS          10
+#define EEPROM_BOOL_START_ADDRESS   0
+#define EEPROM_BYTE_START_ADDRESS   1
+#define EEPROM_INT_START_ADDRESS    2
 
-#define PRIMARY_KEY                             F("command")
-#define TOGGLE_FEED_MODE_COMMAND                F("toggleFeedMode")
-#define SET_SILO_THRESHOLD_COMMAND              F("setSiloThreshold")
-#define SET_PRIMARY_SILO_STATE_COMMAND          F("setPrimarySiloState")
-#define GET_STATE_COMMAND                       F("getState")
-#define S_202_SELECTION_KEY                     F("selectionS202")
-#define S_204_SELECTION_KEY                     F("selectionS204")
-#define EXTERNAL_SILO_KEY                       F("externalSilo")
-#define THRESHOLD_KEY                           F("threshold")
-#define SILO_KEY                                F("silo")
+#define EEPROM_BOOL_SIZE            sizeof(bool)
+#define EEPROM_BYTE_SIZE            sizeof(uint8_t)
+#define EEPROM_INT_SIZE             sizeof(uint16_t)
+
+#define EEPROM_IS_IMMEDIATE_FEED_SILO_202_STATE_ADDRESS  EEPROM_BOOL_START_ADDRESS
+#define EEPROM_IS_IMMEDIATE_FEED_SILO_204_STATE_ADDRESS  (EEPROM_IS_IMMEDIATE_FEED_SILO_202_STATE_ADDRESS + EEPROM_BOOL_SIZE)
+#define EEPROM_S206_SELECTION_STATE_ADDRESS              (EEPROM_IS_IMMEDIATE_FEED_SILO_204_STATE_ADDRESS + EEPROM_BOOL_SIZE)
+#define EEPROM_S207_SELECTION_STATE_ADDRESS              (EEPROM_S206_SELECTION_STATE_ADDRESS + EEPROM_BYTE_SIZE)
+#define EEPROM_S208_SELECTION_STATE_ADDRESS              (EEPROM_S207_SELECTION_STATE_ADDRESS + EEPROM_BYTE_SIZE)
+#define EEPROM_SILO202_THRESHOLD_STATE_ADDRESS           (EEPROM_S208_SELECTION_STATE_ADDRESS + EEPROM_BYTE_SIZE)
+#define EEPROM_SILO204_THRESHOLD_STATE_ADDRESS           (EEPROM_SILO202_THRESHOLD_STATE_ADDRESS + EEPROM_INT_SIZE)
+
+
+#define PRIMARY_KEY                             F("c")
+#define TOGGLE_FEED_MODE_COMMAND                F("tfm")
+#define SET_SILO_THRESHOLD_COMMAND              F("sst")
+#define SET_PRIMARY_SILO_STATE_COMMAND          F("spss")
+#define GET_STATE_COMMAND                       F("gs")
+#define S_202_SELECTION_KEY                     F("ss202")
+#define S_204_SELECTION_KEY                     F("ss204")
+#define EXTERNAL_SILO_KEY                       F("ex")
+#define THRESHOLD_KEY                           F("t")
+#define SILO_KEY                                F("s")
 
 #define NO_SELECTION        0
 #define SELECTION_S202      1
@@ -105,8 +114,8 @@ void saveStateToEEPROM() {
     EEPROM.write(EEPROM_S207_SELECTION_STATE_ADDRESS, s207SelectionState);
     EEPROM.write(EEPROM_S208_SELECTION_STATE_ADDRESS, s208SelectionState);
 
-    EEPROM.write(EEPROM_SILO202_THRESHOLD_STATE_ADDRESS, silo202Threshold);
-    EEPROM.write(EEPROM_SILO204_THRESHOLD_STATE_ADDRESS, silo204Threshold);
+    EEPROM.put(EEPROM_SILO202_THRESHOLD_STATE_ADDRESS, silo202Threshold);
+    EEPROM.put(EEPROM_SILO204_THRESHOLD_STATE_ADDRESS, silo204Threshold);
 }
 
 void loadStateFromEEPROM() {
