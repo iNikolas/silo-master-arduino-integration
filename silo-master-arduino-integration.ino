@@ -14,7 +14,7 @@
 #define BAUD_RATE           38400
 #define REGISTER_START      0x40001
 #define REGISTER_COUNT      3
-#define READ_DELAY_MS       10
+#define READ_DELAY_MS       500
 #define DECIMAL_PLACE       10.0f
 #define JSON_BUFFER_SIZE    50
 
@@ -194,7 +194,7 @@ void processSetPrimarySiloSelection() {
     uint8_t selectionS202 = jsonDoc[S_202_SELECTION_KEY];
     uint8_t selectionS204 = jsonDoc[S_204_SELECTION_KEY];
 
-    if (selectionS202 == selectionS204) {
+    if (selectionS202 == selectionS204 && selectionS202 != NO_SELECTION) {
         sendErrorToGUI(F("Selections must be unique for each external Silo"));
         return;
     }
