@@ -3,13 +3,20 @@
 #include <ModbusMaster.h>
 #include <SoftwareSerial.h>
 
+#define MAX485_RE_NEG_PIN   2
+#define MAX485_DE_PIN       3
+#define SERIAL_RX_PIN       8
+#define SERIAL_TX_PIN       9
+
+#define SCREW_CONVEYOR_206_PIN  4 
+#define SCREW_CONVEYOR_207_PIN  5 
+#define ROTARY_VALVE_208_PIN    6 
+#define SCREW_CONVEYOR_202_PIN  10
+#define SCREW_CONVEYOR_204_PIN  11
+
 #define BITS_PER_BYTE       8
 #define BYTES_PER_INT       2
 #define TOTAL_BITS          (BITS_PER_BYTE * BYTES_PER_INT)
-#define MAX485_DE_PIN       3
-#define MAX485_RE_NEG_PIN   2
-#define SERIAL_RX_PIN       8
-#define SERIAL_TX_PIN       9
 #define SLAVE_ID            2
 #define BAUD_RATE           38400
 #define REGISTER_START      0x40001
@@ -56,6 +63,9 @@
 #define SILO_207            207
 #define SILO_208            208
 
+#define RELAY_ON LOW
+#define RELAY_OFF HIGH
+
 int16_t weight;
 uint16_t silo202Threshold;
 uint16_t silo204Threshold;
@@ -65,6 +75,11 @@ bool isImmediateFeedSilo204;
 uint8_t s206SelectionState;
 uint8_t s207SelectionState;
 uint8_t s208SelectionState;
+
+int16_t startingWeight202 = 0;
+int16_t startingWeight204 = 0;
+bool isFeedingSilo202 = false;
+bool isFeedingSilo204 = false;
 
 SoftwareSerial modbusSerial(SERIAL_RX_PIN, SERIAL_TX_PIN);
 ModbusMaster node;
@@ -81,14 +96,25 @@ void processSetSiloThreshold();
 void processSetPrimarySiloSelection();
 void preTransmission();
 void postTransmission();
+void processSiloFeedLogic();
+void controlConveyor(uint8_t selectionState, bool inputActive, uint8_t selection, uint16_t threshold, bool &isFeeding, int16_t &startingWeight, uint8_t outputPin, bool isImmediateFeed);
 
 StaticJsonDocument<JSON_BUFFER_SIZE> jsonDoc;
 
 void setup() {
     pinMode(MAX485_RE_NEG_PIN, OUTPUT);
     pinMode(MAX485_DE_PIN, OUTPUT);
+
+    pinMode(SCREW_CONVEYOR_202_PIN, OUTPUT);
+    pinMode(SCREW_CONVEYOR_204_PIN, OUTPUT);
+    pinMode(SCREW_CONVEYOR_206_PIN, INPUT);
+    pinMode(SCREW_CONVEYOR_207_PIN, INPUT);
+    pinMode(ROTARY_VALVE_208_PIN, INPUT);
+
     digitalWrite(MAX485_RE_NEG_PIN, LOW);
     digitalWrite(MAX485_DE_PIN, LOW);
+    digitalWrite(SCREW_CONVEYOR_202_PIN, RELAY_OFF);
+    digitalWrite(SCREW_CONVEYOR_204_PIN, RELAY_OFF);
 
     Serial.begin(BAUD_RATE);
     modbusSerial.begin(BAUD_RATE);
@@ -103,7 +129,55 @@ void setup() {
 void loop() {
     readWeight();
     processSerialInput();
+    processSiloFeedLogic();
     delay(READ_DELAY_MS);
+}
+
+void controlConveyor(uint8_t selectionState, bool inputActive, uint8_t selection, uint16_t threshold, bool &isFeeding, int16_t &startingWeight, uint8_t outputPin, bool isImmediateFeed) {
+    if (selectionState == selection) {
+        if (inputActive) {
+            if (!isFeeding) {
+                startingWeight = weight;
+                isFeeding = true;
+            }
+
+            int16_t weightDifference = weight - startingWeight;
+
+            if (((isImmediateFeed && weightDifference < threshold) || (!isImmediateFeed && weightDifference > threshold)) && threshold != 0) {
+                digitalWrite(outputPin, RELAY_ON);
+            } else {
+                digitalWrite(outputPin, RELAY_OFF);
+            }
+        } else {
+            digitalWrite(outputPin, RELAY_OFF);
+            isFeeding = false;
+        }
+    }
+}
+
+
+void processSiloFeedLogic() {
+    bool s206Active = digitalRead(SCREW_CONVEYOR_206_PIN) == HIGH;
+    bool s207Active = digitalRead(SCREW_CONVEYOR_207_PIN) == HIGH;
+    bool s208Active = digitalRead(ROTARY_VALVE_208_PIN) == HIGH;
+
+    if (s206SelectionState != SELECTION_S202 && s207SelectionState != SELECTION_S202 && s208SelectionState != SELECTION_S202) {
+      isFeedingSilo202 = false;
+      digitalWrite(SCREW_CONVEYOR_202_PIN, RELAY_OFF);
+    } else {
+      controlConveyor(s206SelectionState, s206Active, SELECTION_S202, silo202Threshold, isFeedingSilo202, startingWeight202, SCREW_CONVEYOR_202_PIN, isImmediateFeedSilo202);
+      controlConveyor(s207SelectionState, s207Active, SELECTION_S202, silo202Threshold, isFeedingSilo202, startingWeight202, SCREW_CONVEYOR_202_PIN, isImmediateFeedSilo202);
+      controlConveyor(s208SelectionState, s208Active, SELECTION_S202, silo202Threshold, isFeedingSilo202, startingWeight202, SCREW_CONVEYOR_202_PIN, isImmediateFeedSilo202);
+    }
+
+    if (s206SelectionState != SELECTION_S204 && s207SelectionState != SELECTION_S204 && s208SelectionState != SELECTION_S204) {
+      isFeedingSilo204 = false;
+      digitalWrite(SCREW_CONVEYOR_204_PIN, RELAY_OFF);
+    } else {
+      controlConveyor(s206SelectionState, s206Active, SELECTION_S204, silo204Threshold, isFeedingSilo204, startingWeight204, SCREW_CONVEYOR_204_PIN, isImmediateFeedSilo204);
+      controlConveyor(s207SelectionState, s207Active, SELECTION_S204, silo204Threshold, isFeedingSilo204, startingWeight204, SCREW_CONVEYOR_204_PIN, isImmediateFeedSilo204);
+      controlConveyor(s208SelectionState, s208Active, SELECTION_S204, silo204Threshold, isFeedingSilo204, startingWeight204, SCREW_CONVEYOR_204_PIN, isImmediateFeedSilo204);
+    }
 }
 
 void saveStateToEEPROM() {
@@ -321,15 +395,20 @@ void processSetSiloThreshold() {
 
 void sendStateToGUI() {
     jsonDoc.clear();
-    jsonDoc[F("weight")] = weight;
-    jsonDoc[F("weightError")] = weightError;
-    jsonDoc[F("isImmediateFeedSilo202")] = isImmediateFeedSilo202;
-    jsonDoc[F("isImmediateFeedSilo204")] = isImmediateFeedSilo204;
-    jsonDoc[F("silo202Threshold")] = silo202Threshold;
-    jsonDoc[F("silo204Threshold")] = silo204Threshold;
-    jsonDoc[F("s206SelectionState")] = s206SelectionState;
-    jsonDoc[F("s207SelectionState")] = s207SelectionState;
-    jsonDoc[F("s208SelectionState")] = s208SelectionState;
+    jsonDoc[F("w")] = weight;
+    jsonDoc[F("we")] = weightError;
+    jsonDoc[F("im202")] = isImmediateFeedSilo202;
+    jsonDoc[F("im204")] = isImmediateFeedSilo204;
+    jsonDoc[F("t202")] = silo202Threshold;
+    jsonDoc[F("t204")] = silo204Threshold;
+    jsonDoc[F("ss206")] = s206SelectionState;
+    jsonDoc[F("ss207")] = s207SelectionState;
+    jsonDoc[F("ss208")] = s208SelectionState;
+    jsonDoc[F("sc206")] = (digitalRead(SCREW_CONVEYOR_206_PIN) == HIGH);
+    jsonDoc[F("sc207")] = (digitalRead(SCREW_CONVEYOR_207_PIN) == HIGH);
+    jsonDoc[F("rv208")] = (digitalRead(ROTARY_VALVE_208_PIN) == HIGH);
+    jsonDoc[F("sc202")] = (digitalRead(SCREW_CONVEYOR_202_PIN) == RELAY_ON);
+    jsonDoc[F("sc204")] = (digitalRead(SCREW_CONVEYOR_204_PIN) == RELAY_ON);
     String output;
     serializeJson(jsonDoc, output);
     Serial.println(output);
